@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+	
+	<string name="text_crop_thumbnails">Обрезать превью</string>
+	<string name="text_loading">Загрузка…</string>
+	
+	<string name="error_connection">Ошибка соединения</string>
+	<string name="error_invalid_response">Некорректный ответ сервера</string>
+	<string name="error_not_found">Не найдено</string>
+	<string name="error_ssl">Ошибка SSL</string>
+	
+</resources>
