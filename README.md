@@ -26,4 +26,4 @@ key.password=%KEY_PASSWORD%
 
 # License
 
-Instant Image is licensed under the [MIT License](LICENSE)
+Instant Image is licensed under the [MIT License](LICENSE).
