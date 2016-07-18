@@ -1,6 +1,6 @@
 # Instant Image
 
-Instant Image is tool that allows you to find image in Google search and attach it in two clicks.
+Instant Image is a tool that allows you to find image in Google search and attach it in two clicks.
 
 Choose this app in attachment dialog, enter search query and choose the desired image.
 
