@@ -2,9 +2,11 @@
 <resources>
 	
 	<string name="text_crop_thumbnails">Crop thumbnails</string>
+	<string name="text_download">Download</string>
 	<string name="text_loading">Loading…</string>
 	
 	<string name="error_connection">Connection error</string>
+	<string name="error_download_manager">Download Manager is not available</string>
 	<string name="error_invalid_response">Invalid server response</string>
 	<string name="error_not_found">Not found</string>
 	<string name="error_ssl">SSL error</string>

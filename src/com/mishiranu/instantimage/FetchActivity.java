@@ -2,20 +2,28 @@ package com.mishiranu.instantimage;
 
 import java.util.ArrayList;
 
+import android.annotation.TargetApi;
 import android.app.Activity;
+import android.app.DownloadManager;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
+import android.view.ContextMenu;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
+import android.view.ContextMenu.ContextMenuInfo;
 import android.widget.AdapterView;
 import android.widget.GridView;
 import android.widget.SearchView;
 import android.widget.Toast;
 
+import com.mishiranu.instantimage.util.FileManager;
 import com.mishiranu.instantimage.util.Preferences;
 
 public class FetchActivity extends Activity implements ViewTreeObserver.OnGlobalLayoutListener,
@@ -54,6 +62,7 @@ public class FetchActivity extends Activity implements ViewTreeObserver.OnGlobal
 		mGridView.setScrollBarStyle(GridView.SCROLLBARS_OUTSIDE_OVERLAY);
 		mGridView.setClipToPadding(false);
 		mGridView.getViewTreeObserver().addOnGlobalLayoutListener(this);
+		registerForContextMenu(mGridView);
 		addContentView(mGridView, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
 				ViewGroup.LayoutParams.MATCH_PARENT));
 		LoadingDialog loadingDialog = (LoadingDialog) getFragmentManager().findFragmentByTag(LoadingDialog.TAG);
@@ -163,6 +172,71 @@ public class FetchActivity extends Activity implements ViewTreeObserver.OnGlobal
 			}
 		}
 		return super.onOptionsItemSelected(item);
+	}
+	
+	@Override
+	public void onCreateContextMenu(ContextMenu menu, View v, ContextMenuInfo menuInfo)
+	{
+		menu.add(0, 1, 0, R.string.text_download);
+	}
+	
+	@TargetApi(Build.VERSION_CODES.M)
+	@Override
+	public boolean onContextItemSelected(MenuItem item)
+	{
+		AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) item.getMenuInfo();
+		switch (item.getItemId())
+		{
+			case 1:
+			{
+				if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
+				{
+					if (checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+							!= PackageManager.PERMISSION_GRANTED)
+					{
+						requestPermissions(new String[] {android.Manifest.permission.WRITE_EXTERNAL_STORAGE},
+								info.position);
+						return true;
+					}
+				}
+				ImageItem imageItem = mGridAdapter.getItem(info.position);
+				performDownload(imageItem);
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	@Override
+	public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults)
+	{
+		if (grantResults.length == 1 && grantResults[0] == PackageManager.PERMISSION_GRANTED)
+		{
+			performDownload(mGridAdapter.getItem(requestCode));
+		}
+	}
+	
+	private void performDownload(ImageItem imageItem)
+	{
+		DownloadManager downloadManager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+		DownloadManager.Request request = new DownloadManager.Request(Uri.parse(imageItem.imageUriString));
+		request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+		request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS,
+				FileManager.obtainSimpleFileName(imageItem.imageUriString));
+		request.allowScanningByMediaScanner();
+		try
+		{
+			downloadManager.enqueue(request);
+		}
+		catch (IllegalArgumentException e)
+		{
+			String message = e.getMessage();
+			if (message.equals("Unknown URL content://downloads/my_downloads"))
+			{
+				Toast.makeText(this, R.string.error_download_manager, Toast.LENGTH_LONG).show();
+			}
+			else throw e;
+		}
 	}
 	
 	private final Runnable mPositionRunnable = new Runnable()

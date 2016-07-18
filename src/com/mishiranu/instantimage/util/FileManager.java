@@ -46,22 +46,27 @@ public class FileManager
 		}
 	}
 	
-	public static FileItem obtainFile(Context context, String originalUriString, int contentId)
+	public static String obtainSimpleFileName(String originalUriString)
 	{
-		File filesDir = context.getFilesDir();
-		filesDir.mkdirs();
 		String extension = null;
 		if (originalUriString != null)
 		{
 			int index = originalUriString.lastIndexOf('.');
-			if (index >= 0)
+			if (index >= 0 && originalUriString.indexOf('/', index) == -1)
 			{
 				String extensionTemp = originalUriString.substring(index + 1);
 				if (extensionTemp.length() <= 5) extension = extensionTemp;
 			}
 		}
 		if (extension == null || extension.isEmpty()) extension = "jpeg";
-		String displayName = contentId + "-" + System.currentTimeMillis() + "." + extension;
+		return System.currentTimeMillis() + "." + extension;
+	}
+	
+	public static FileItem obtainFile(Context context, String originalUriString, int contentId)
+	{
+		File filesDir = context.getFilesDir();
+		filesDir.mkdirs();
+		String displayName = contentId + "-" + obtainSimpleFileName(originalUriString);
 		return new FileItem(contentId, displayName, new File(filesDir, displayName));
 	}
 	
