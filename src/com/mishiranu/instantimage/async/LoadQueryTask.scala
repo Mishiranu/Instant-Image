@@ -57,7 +57,9 @@ class LoadQueryTask(query: String) extends Http {
         val imageUriString = jsonObject.getString("ou")
         val thumbnailUriString = jsonObject.getString("tu")
         val text = jsonObject.getString("pt")
-        Image(imageUriString, thumbnailUriString, text)
+        val width = jsonObject.optInt("ow")
+        val height = jsonObject.optInt("oh")
+        Image(imageUriString, thumbnailUriString, text, width, height)
       } catch {
         case _: JSONException => null
       }

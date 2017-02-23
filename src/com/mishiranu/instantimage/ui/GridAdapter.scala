@@ -1,9 +1,10 @@
 package com.mishiranu.instantimage.ui
 
+import android.graphics.Typeface
 import android.text.TextUtils
 import android.util.TypedValue
 import android.view.{Gravity, View, ViewGroup}
-import android.widget.{BaseAdapter, FrameLayout, ImageView, TextView}
+import android.widget.{BaseAdapter, FrameLayout, ImageView, LinearLayout, TextView}
 
 import com.mishiranu.instantimage.model.Image
 import com.mishiranu.instantimage.util.Preferences
@@ -25,7 +26,7 @@ class GridAdapter extends BaseAdapter {
   override def getItemId(position: Int): Long = 0L
   override def getCount: Int = images.size
 
-  case class ViewHolder(imageView: SquareImageView, textView: TextView)
+  case class ViewHolder(imageView: SquareImageView, dimensionsView: TextView, titleView: TextView)
 
   override def getView(position: Int, convertView: View, parent: ViewGroup): View = {
     val (view, viewHolder) = {
@@ -40,18 +41,30 @@ class GridAdapter extends BaseAdapter {
         val imageView = new SquareImageView(parent.getContext)
         frameLayout.addView(imageView, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
 
-        val textView = new TextView(parent.getContext)
-        textView.setBackgroundColor(0xcc222222)
+        val linearLayout = new LinearLayout(parent.getContext)
+        linearLayout.setOrientation(LinearLayout.VERTICAL)
+        linearLayout.setBackgroundColor(0xcc222222)
         val padding = (8 * density + 0.5f).toInt
-        textView.setPadding(padding, padding, padding, padding)
-        textView.setSingleLine(true)
-        textView.setEllipsize(TextUtils.TruncateAt.END)
-        textView.setTextColor(0xffffffff)
-        textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12)
-        frameLayout.addView(textView, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+        linearLayout.setPadding(padding, padding, padding, padding)
+        frameLayout.addView(linearLayout, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
           ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM))
 
-        val viewHolder = ViewHolder(imageView, textView)
+        val dimensionsView = new TextView(parent.getContext)
+        dimensionsView.setSingleLine(true)
+        dimensionsView.setEllipsize(TextUtils.TruncateAt.END)
+        dimensionsView.setTextColor(0xddffffff)
+        dimensionsView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12)
+        dimensionsView.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL))
+        linearLayout.addView(dimensionsView, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+
+        val titleView = new TextView(parent.getContext)
+        titleView.setSingleLine(true)
+        titleView.setEllipsize(TextUtils.TruncateAt.END)
+        titleView.setTextColor(0xffffffff)
+        titleView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12)
+        linearLayout.addView(titleView, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+
+        val viewHolder = ViewHolder(imageView, dimensionsView, titleView)
         frameLayout.setTag(viewHolder)
         (frameLayout, viewHolder)
       } else {
@@ -63,7 +76,13 @@ class GridAdapter extends BaseAdapter {
     val scaleType = if (Preferences.cropThumbnails) ImageView.ScaleType.CENTER_CROP else ImageView.ScaleType.FIT_CENTER
     viewHolder.imageView.setScaleType(scaleType)
     Picasso.`with`(parent.getContext).load(image.thumbnailUriString).into(viewHolder.imageView)
-    viewHolder.textView.setText(image.text)
+    if (image.width > 0 && image.height > 0) {
+      viewHolder.dimensionsView.setVisibility(View.VISIBLE)
+      viewHolder.dimensionsView.setText(image.width + " × " + image.height)
+    } else {
+      viewHolder.dimensionsView.setVisibility(View.GONE)
+    }
+    viewHolder.titleView.setText(image.text)
     view
   }
 }
