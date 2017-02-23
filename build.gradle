@@ -1,10 +1,12 @@
 buildscript {
 	repositories {
 		jcenter()
+		flatDir dirs: "libs"
 	}
 
 	dependencies {
-		classpath 'com.android.tools.build:gradle:2.1.0'
+		classpath 'com.android.tools.build:gradle:2.2.2'
+		classpath 'jp.leafytree.gradle:gradle-android-scala-plugin:1.5-SNAPSHOT'
 	}
 }
 
@@ -15,18 +17,16 @@ allprojects {
 }
 
 apply plugin: 'com.android.application'
-
-dependencies {
-	compile 'com.squareup.picasso:picasso:2.5.2'
-}
+apply plugin: 'jp.leafytree.android-scala'
 
 android {
-	compileSdkVersion 24
-	buildToolsVersion '24'
+	compileSdkVersion 25
+	buildToolsVersion '25'
 
 	sourceSets.main {
 		manifest.srcFile 'AndroidManifest.xml'
 		java.srcDirs = ['src']
+		scala.srcDirs = ['src']
 		resources.srcDirs = ['src']
 		aidl.srcDirs = ['src']
 		renderscript.srcDirs = ['src']
@@ -52,8 +52,13 @@ android {
 	}
 
 	buildTypes {
+		debug {
+			minifyEnabled true
+			proguardFiles 'proguard-rules.pro'
+		}
 		release {
-			minifyEnabled false
+			minifyEnabled true
+			proguardFiles 'proguard-rules.pro'
 		}
 	}
 
@@ -66,4 +71,18 @@ android {
 		sourceCompatibility JavaVersion.VERSION_1_7
 		targetCompatibility JavaVersion.VERSION_1_7
 	}
+}
+
+ScalaCompileOptions.metaClass {
+	useAnt = false
+	useCompileDaemon = true
+	additionalParameters = ["-feature"]
+}
+
+dependencies {
+	compile 'org.scala-lang:scala-library:2.11.8'
+	compile 'io.reactivex:rxscala_2.10:0.26.5'
+	compile 'io.reactivex:rxandroid:1.2.1'
+	compile 'org.scalaj:scalaj-http_2.11:2.3.0'
+	compile 'com.squareup.picasso:picasso:2.5.2'
 }

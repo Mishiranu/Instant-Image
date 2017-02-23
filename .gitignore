@@ -5,4 +5,5 @@
 !/AndroidManifest.xml
 !/build.gradle
 !/LICENSE
+!/proguard-rules.pro
 !/README.md

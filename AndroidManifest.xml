@@ -4,30 +4,31 @@
 	package="com.mishiranu.instantimage"
 	android:versionCode="1"
 	android:versionName="1.1.0">
-	
-	<uses-sdk android:minSdkVersion="16" android:targetSdkVersion="24" />
-	
+
+	<uses-sdk android:minSdkVersion="16" android:targetSdkVersion="25" />
+
 	<uses-permission android:name="android.permission.INTERNET" />
 	<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-	
-	<application android:allowBackup="true" android:icon="@mipmap/ic_launcher" android:label="Instant Image">
-		
-		<activity android:name=".FetchActivity" android:theme="@style/Theme.Main">
-			
+
+	<application android:allowBackup="true" android:name=".ui.MainApplication"
+		android:icon="@mipmap/ic_launcher" android:label="Instant Image">
+
+		<activity android:name=".ui.FetchActivity" android:theme="@style/Theme.Main">
+
 			<intent-filter>
-				
+
 				<action android:name="android.intent.action.GET_CONTENT" />
 				<category android:name="android.intent.category.DEFAULT" />
 				<category android:name="android.intent.category.OPENABLE" />
 				<data android:mimeType="image/*" />
-				
+
 			</intent-filter>
-			
+
 		</activity>
-		
-		<provider android:name=".ImageProvider" android:authorities="com.mishiranu.providers.instantimage"
+
+		<provider android:name=".ui.ImageProvider" android:authorities="com.mishiranu.providers.instantimage"
 			tools:ignore="ExportedContentProvider" android:exported="true" android:grantUriPermissions="true" />
-		
+
 	</application>
-	
+
 </manifest>
