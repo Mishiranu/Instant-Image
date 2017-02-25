@@ -17,6 +17,8 @@ import java.io.{FileOutputStream, IOException}
 import javax.net.ssl.SSLException
 
 class LoadImageTask(context: Context, uriString: String) extends Http {
+  import LoadImageTask._
+
   private class InvalidResponseException extends Exception
 
   private def request: Observable[HttpResponse[Array[Byte]]] = {
@@ -34,7 +36,7 @@ class LoadImageTask(context: Context, uriString: String) extends Http {
     response.body
   }
 
-  private def writeToFile(response: Array[Byte]): LoadImageTask.Result = {
+  private def writeToFile(response: Array[Byte]): Result = {
     val contentId = Preferences.nextContentId()
     val fileItem = FileManager.obtainFile(context, uriString, contentId)
     var outputStream: FileOutputStream = null
@@ -46,11 +48,11 @@ class LoadImageTask(context: Context, uriString: String) extends Http {
         outputStream.close()
       }
     }
-    LoadImageTask.Result(contentId, fileItem.mimeType, 0)
+    Result(contentId, fileItem.mimeType, 0)
   }
 
-  private def handleError(t: Throwable): LoadImageTask.Result = {
-    LoadImageTask.Result(0, null, t match {
+  private def handleError(t: Throwable): Result = {
+    Result(0, null, t match {
       case _: InvalidResponseException => R.string.error_invalid_response
       case _: SSLException => R.string.error_ssl
       case _: IOException => R.string.error_connection
@@ -58,7 +60,7 @@ class LoadImageTask(context: Context, uriString: String) extends Http {
     })
   }
 
-  def load: Observable[LoadImageTask.Result] = {
+  def load: Observable[Result] = {
     request.subscribeOn(Schedulers.io)
       .map(getImage)
       .map(writeToFile)

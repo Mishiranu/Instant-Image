@@ -19,6 +19,8 @@ import java.io.IOException
 import javax.net.ssl.SSLException
 
 class LoadQueryTask(query: String) extends Http {
+  import LoadQueryTask._
+
   private class InvalidResponseException extends Exception
 
   private def request: Observable[HttpResponse[String]] = {
@@ -37,7 +39,7 @@ class LoadQueryTask(query: String) extends Http {
     response.body
   }
 
-  private def getImages(response: String): LoadQueryTask.Result = {
+  private def getImages(response: String): Result = {
     def getImageString(data: String, from: Int): List[String] = {
       val start = data.indexOf('{', from + 1)
       val end = data.indexOf('}', start)
@@ -51,7 +53,7 @@ class LoadQueryTask(query: String) extends Http {
     val index = response.indexOf("<body")
     val list = if (index >= 0) getImageString(response, index) else List()
 
-    LoadQueryTask.Result(list.map { jsonString =>
+    Result(list.map { jsonString =>
       try {
         val jsonObject = new JSONObject(jsonString)
         val imageUriString = jsonObject.getString("ou")
@@ -66,8 +68,8 @@ class LoadQueryTask(query: String) extends Http {
     }.filter(_ != null), 0)
   }
 
-  private def handleError(t: Throwable): LoadQueryTask.Result = {
-    LoadQueryTask.Result(null, t match {
+  private def handleError(t: Throwable): Result = {
+    Result(null, t match {
       case _: InvalidResponseException => R.string.error_invalid_response
       case _: SSLException => R.string.error_ssl
       case _: IOException => R.string.error_connection
@@ -75,7 +77,7 @@ class LoadQueryTask(query: String) extends Http {
     })
   }
 
-  def load: Observable[LoadQueryTask.Result] = {
+  def load: Observable[Result] = {
     request.subscribeOn(Schedulers.io)
       .map(getString)
       .map(getImages)

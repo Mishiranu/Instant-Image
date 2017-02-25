@@ -11,13 +11,15 @@ import android.provider.{BaseColumns, OpenableColumns}
 import com.mishiranu.instantimage.util.FileManager
 
 class ImageProvider extends ContentProvider {
+  import ImageProvider._
+
   override def onCreate(): Boolean = true
 
   override def getType(uri: Uri): String = {
-    ImageProvider.URI_MATCHER.`match`(uri) match {
-      case ImageProvider.URI_IMAGES =>
-        "vnd.android.cursor.dir/" + ImageProvider.AUTHORITY + "." + ImageProvider.PATH_IMAGES
-      case ImageProvider.URI_IMAGES_ID =>
+    URI_MATCHER.`match`(uri) match {
+      case URI_IMAGES =>
+        "vnd.android.cursor.dir/" + AUTHORITY + "." + PATH_IMAGES
+      case URI_IMAGES_ID =>
         FileManager.findFile(getContext, uri.getLastPathSegment.toInt)
           .map(_.mimeType).getOrElse("application/octet-stream")
       case _ =>
@@ -26,8 +28,8 @@ class ImageProvider extends ContentProvider {
   }
 
   override def openFile(uri: Uri, mode: String): ParcelFileDescriptor = {
-    ImageProvider.URI_MATCHER.`match`(uri) match {
-      case ImageProvider.URI_IMAGES_ID =>
+    URI_MATCHER.`match`(uri) match {
+      case URI_IMAGES_ID =>
         if (!"r".equals(mode)) {
           throw new FileNotFoundException
         }
@@ -41,10 +43,10 @@ class ImageProvider extends ContentProvider {
 
   override def query(uri: Uri, projection: Array[String], selection: String,
     selectionArgs: Array[String], sortOrder: String): Cursor = {
-    val matchResult = ImageProvider.URI_MATCHER.`match`(uri)
-    val multiple = matchResult == ImageProvider.URI_IMAGES
-    if (matchResult == ImageProvider.URI_IMAGES || matchResult == ImageProvider.URI_IMAGES_ID) {
-      val workProjection = if (projection != null) projection else ImageProvider.PROJECTION
+    val matchResult = URI_MATCHER.`match`(uri)
+    val multiple = matchResult == URI_IMAGES
+    if (matchResult == URI_IMAGES || matchResult == URI_IMAGES_ID) {
+      val workProjection = if (projection != null) projection else PROJECTION
 
       workProjection
         .filterNot(_ == BaseColumns._ID)

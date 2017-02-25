@@ -18,6 +18,8 @@ import scala.collection.mutable
 
 class FetchActivity extends Activity with ViewTreeObserver.OnGlobalLayoutListener with SearchView.OnQueryTextListener
   with MenuItem.OnActionExpandListener with LoadingDialog.Callback with AdapterView.OnItemClickListener {
+  import FetchActivity._
+
   private val images = new mutable.ArrayBuffer[Image]
   private val gridAdapter = new GridAdapter()
 
@@ -40,7 +42,7 @@ class FetchActivity extends Activity with ViewTreeObserver.OnGlobalLayoutListene
     gridView.setOnItemClickListener(this)
     gridView.setAdapter(gridAdapter)
     val density = getResources.getDisplayMetrics.density
-    val spacing = (FetchActivity.GRID_SPACING_DP * density + 0.5f).toInt
+    val spacing = (GRID_SPACING_DP * density + 0.5f).toInt
     gridView.setHorizontalSpacing(spacing)
     gridView.setVerticalSpacing(spacing)
     gridView.setPadding(spacing, spacing, spacing, spacing)
@@ -56,8 +58,7 @@ class FetchActivity extends Activity with ViewTreeObserver.OnGlobalLayoutListene
       loadingDialog.setCallback(this)
     }
     if (savedInstanceState != null) {
-      val images: java.util.ArrayList[Image] = savedInstanceState
-        .getParcelableArrayList(FetchActivity.EXTRA_IMAGES)
+      val images = savedInstanceState.getParcelableArrayList[Image](EXTRA_IMAGES)
       if (images != null) {
         import scala.collection.JavaConversions._
         this.images ++= images
@@ -69,7 +70,7 @@ class FetchActivity extends Activity with ViewTreeObserver.OnGlobalLayoutListene
   override protected def onSaveInstanceState(outState: Bundle): Unit = {
     super.onSaveInstanceState(outState)
     import scala.collection.JavaConverters._
-    outState.putParcelableArrayList(FetchActivity.EXTRA_IMAGES, new java.util.ArrayList(images.asJava))
+    outState.putParcelableArrayList(EXTRA_IMAGES, new java.util.ArrayList(images.asJava))
   }
 
   private var lastGridViewWidth = -1

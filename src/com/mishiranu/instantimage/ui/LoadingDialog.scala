@@ -10,7 +10,9 @@ import com.mishiranu.instantimage.model.Image
 import rx.lang.scala.Subscription
 
 class LoadingDialog extends DialogFragment with RxFragment {
-  private var callback: LoadingDialog.Callback = _
+  import LoadingDialog._
+
+  private var callback: Callback = _
 
   def this(query: String, imageUriString: String, callback: LoadingDialog.Callback) = {
     this
@@ -21,7 +23,7 @@ class LoadingDialog extends DialogFragment with RxFragment {
     setCallback(callback)
   }
 
-  def setCallback(callback: LoadingDialog.Callback): Unit = {
+  def setCallback(callback: Callback): Unit = {
     this.callback = callback
   }
 
@@ -38,8 +40,8 @@ class LoadingDialog extends DialogFragment with RxFragment {
   }
 
   override protected def createRxSubscription: Subscription = {
-    val query = getArguments.getString(LoadingDialog.EXTRA_QUERY)
-    val imageUriString = getArguments.getString(LoadingDialog.EXTRA_IMAGE_URI_STRING)
+    val query = getArguments.getString(EXTRA_QUERY)
+    val imageUriString = getArguments.getString(EXTRA_IMAGE_URI_STRING)
     if (query != null) {
       LoadQueryTask(query).subscribe(onQueryLoad _)
     } else if (imageUriString != null) {
@@ -71,7 +73,7 @@ class LoadingDialog extends DialogFragment with RxFragment {
 }
 
 object LoadingDialog {
-  val TAG: String = LoadingDialog.getClass.getName
+  val TAG: String = classOf[LoadingDialog].getName
 
   private val EXTRA_QUERY = "query"
   private val EXTRA_IMAGE_URI_STRING = "imageUriString"
