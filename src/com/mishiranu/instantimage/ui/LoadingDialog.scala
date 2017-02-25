@@ -1,7 +1,6 @@
 package com.mishiranu.instantimage.ui
 
 import android.app.{DialogFragment, ProgressDialog}
-import android.content.DialogInterface
 import android.os.Bundle
 
 import com.mishiranu.instantimage.R
@@ -10,9 +9,8 @@ import com.mishiranu.instantimage.model.Image
 
 import rx.lang.scala.Subscription
 
-class LoadingDialog extends DialogFragment {
+class LoadingDialog extends DialogFragment with RxFragment {
   private var callback: LoadingDialog.Callback = _
-  private var subscription: Subscription = _
 
   def this(query: String, imageUriString: String, callback: LoadingDialog.Callback) = {
     this
@@ -39,11 +37,10 @@ class LoadingDialog extends DialogFragment {
     dialog
   }
 
-  override def onActivityCreated(savedInstanceState: Bundle): Unit = {
-    super.onActivityCreated(savedInstanceState)
+  override protected def createRxSubscription: Subscription = {
     val query = getArguments.getString(LoadingDialog.EXTRA_QUERY)
     val imageUriString = getArguments.getString(LoadingDialog.EXTRA_IMAGE_URI_STRING)
-    subscription = if (query != null) {
+    if (query != null) {
       LoadQueryTask(query).subscribe(onQueryLoad _)
     } else if (imageUriString != null) {
       LoadImageTask(getActivity, imageUriString).subscribe(onImageLoad _)
@@ -52,71 +49,23 @@ class LoadingDialog extends DialogFragment {
     }
   }
 
-  override def onDestroy(): Unit = {
-    super.onDestroy()
-    unsubscribe()
-  }
-
-  override def onCancel(dialog: DialogInterface): Unit = {
-    super.onCancel(dialog)
-    unsubscribe()
-  }
-
-  private def unsubscribe(): Unit = {
-    if (subscription != null) {
-      subscription.unsubscribe()
-      subscription = null
-    }
-  }
-
-  private var resumed = false
-  private var queuedResult: () => Unit = _
-
-  override def onResume(): Unit = {
-    super.onResume()
-    resumed = true
-    if (queuedResult != null) {
-      val result = queuedResult
-      queuedResult = null
-      handleResult(result())
-    }
-  }
-
-  override def onPause(): Unit = {
-    super.onPause()
-    resumed = false
-  }
-
-  private def handleResult(result: => Unit): Unit = {
-    if (resumed) {
-      dismiss()
-      result
+  private def onQueryLoad(result: LoadQueryTask.Result): Unit = handleRxResult {
+    dismiss()
+    if (result.errorMessageId != 0) {
+      callback.onQueryLoadingError(result.errorMessageId)
+    } else if (result.images.isEmpty) {
+      callback.onQueryLoadingError(R.string.error_not_found)
     } else {
-      queuedResult = () => result
+      callback.onQueryLoadingSuccess(result.images)
     }
   }
 
-  private def onQueryLoad(result: LoadQueryTask.Result): Unit = {
-    unsubscribe()
-    handleResult {
-      if (result.errorMessageId != 0) {
-        callback.onQueryLoadingError(result.errorMessageId)
-      } else if (result.images.isEmpty) {
-        callback.onQueryLoadingError(R.string.error_not_found)
-      } else {
-        callback.onQueryLoadingSuccess(result.images)
-      }
-    }
-  }
-
-  private def onImageLoad(result: LoadImageTask.Result): Unit = {
-    unsubscribe()
-    handleResult {
-      if (result.errorMessageId != 0) {
-        callback.onImageLoadingError(result.errorMessageId)
-      } else {
-        callback.onImageLoadingSuccess(result.contentId, result.mimeType)
-      }
+  private def onImageLoad(result: LoadImageTask.Result): Unit = handleRxResult {
+    dismiss()
+    if (result.errorMessageId != 0) {
+      callback.onImageLoadingError(result.errorMessageId)
+    } else {
+      callback.onImageLoadingSuccess(result.contentId, result.mimeType)
     }
   }
 }
