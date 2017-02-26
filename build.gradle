@@ -76,7 +76,10 @@ android {
 ScalaCompileOptions.metaClass {
 	useAnt = false
 	useCompileDaemon = true
-	additionalParameters = ["-feature"]
+}
+
+tasks.withType(ScalaCompile) {
+	scalaCompileOptions.additionalParameters = ['-feature', '-deprecation:false']
 }
 
 dependencies {
