@@ -80,7 +80,7 @@ class FetchActivity extends Activity with ViewTreeObserver.OnGlobalLayoutListene
 
   private var lastGridViewWidth = -1
 
-  private val layoutRunnable: Runnable = () => {
+  private val layoutRunnable: Runnable = Runnable {
     val position = gridView.getFirstVisiblePosition
     val density = getResources.getDisplayMetrics.density
     val sizeDp = if (getResources.getConfiguration.smallestScreenWidthDp >= 600) 200 else 150
@@ -180,7 +180,7 @@ class FetchActivity extends Activity with ViewTreeObserver.OnGlobalLayoutListene
     this.selectedImages.clear()
     this.images ++= images
     gridAdapter.setImages(images)
-    gridView.post(() => gridView.setSelection(0))
+    gridView.post(gridView.setSelection(0))
   }
 
   override def onQueryLoadingError(errorMessageId: Int): Unit = {

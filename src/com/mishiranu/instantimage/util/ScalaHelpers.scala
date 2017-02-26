@@ -7,8 +7,12 @@ import rx.lang.scala.Scheduler
 import scala.language.implicitConversions
 
 object ScalaHelpers {
-  implicit def functionToRunnable(function: () => Unit): Runnable = new Runnable {
-    override def run(): Unit = function()
+  implicit def functionToRunnable(function: => Unit): Runnable = new Runnable {
+    override def run(): Unit = function
+  }
+
+  object Runnable {
+    def apply(function: => Unit): Runnable = functionToRunnable(function)
   }
 
   implicit def functionToOnClickListener(function: android.view.View => Unit):
