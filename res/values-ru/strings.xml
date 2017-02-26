@@ -4,6 +4,13 @@
 	<string name="text_crop_thumbnails">Обрезать превью</string>
 	<string name="text_download">Загрузить</string>
 	<string name="text_loading">Загрузка…</string>
+	<string name="text_preview">Предпросмотр</string>
+	<plurals name="text_select_image_format">
+		<item quantity="one">Выбрать %d изображение</item>
+		<item quantity="few">Выбрать %d изображения</item>
+		<item quantity="many">Выбрать %d изображений</item>
+		<item quantity="other">Выбрать %d изображений</item>
+	</plurals>
 
 	<string name="error_connection">Ошибка соединения</string>
 	<string name="error_download_manager">Диспетчер загрузки недоступен</string>

@@ -26,6 +26,9 @@
 
 		</activity>
 
+		<activity android:name=".ui.PreviewActivity" android:theme="@style/Theme.Black"
+			android:label="@string/text_preview" />
+
 		<provider android:name=".ui.ImageProvider" android:authorities="com.mishiranu.providers.instantimage"
 			tools:ignore="ExportedContentProvider" android:exported="true" android:grantUriPermissions="true" />
 

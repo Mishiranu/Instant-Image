@@ -1,17 +1,15 @@
 package com.mishiranu.instantimage.ui
 
-import android.app.{Activity, DownloadManager}
-import android.content.{Context, Intent}
-import android.content.pm.PackageManager
-import android.net.Uri
-import android.os.{Build, Bundle, Environment}
-import android.view.ContextMenu.ContextMenuInfo
-import android.view.{ContextMenu, Menu, MenuItem, View, ViewGroup, ViewTreeObserver}
+import android.app.{Activity, ActivityOptions}
+import android.content.Intent
+import android.graphics.drawable.Drawable
+import android.os.{Bundle, Parcelable}
+import android.view.{Menu, MenuItem, View, ViewGroup, ViewTreeObserver}
 import android.widget.{AdapterView, GridView, SearchView, Toast}
 
 import com.mishiranu.instantimage.R
 import com.mishiranu.instantimage.model.Image
-import com.mishiranu.instantimage.util.{FileManager, Preferences}
+import com.mishiranu.instantimage.util.Preferences
 import com.mishiranu.instantimage.util.ScalaHelpers._
 
 import scala.collection.mutable
@@ -21,6 +19,7 @@ class FetchActivity extends Activity with ViewTreeObserver.OnGlobalLayoutListene
   import FetchActivity._
 
   private val images = new mutable.ArrayBuffer[Image]
+  private val selectedImages = new mutable.LinkedHashSet[Image]
   private val gridAdapter = new GridAdapter()
 
   private var searchView: SearchView = _
@@ -64,6 +63,11 @@ class FetchActivity extends Activity with ViewTreeObserver.OnGlobalLayoutListene
         this.images ++= images
         gridAdapter.setImages(this.images)
       }
+      val selectedImages = savedInstanceState.getParcelableArrayList[Image](EXTRA_SELECTED_IMAGES)
+      if (selectedImages != null) {
+        import scala.collection.JavaConversions._
+        this.selectedImages ++= selectedImages
+      }
     }
   }
 
@@ -71,6 +75,7 @@ class FetchActivity extends Activity with ViewTreeObserver.OnGlobalLayoutListene
     super.onSaveInstanceState(outState)
     import scala.collection.JavaConverters._
     outState.putParcelableArrayList(EXTRA_IMAGES, new java.util.ArrayList(images.asJava))
+    outState.putParcelableArrayList(EXTRA_SELECTED_IMAGES, new java.util.ArrayList(selectedImages.asJava))
   }
 
   private var lastGridViewWidth = -1
@@ -113,10 +118,19 @@ class FetchActivity extends Activity with ViewTreeObserver.OnGlobalLayoutListene
   }
 
   override def onCreateOptionsMenu(menu: Menu): Boolean = {
-    menu.add(0, 1, 0, "").setActionView(searchView).setShowAsActionFlags(MenuItem.SHOW_AS_ACTION_ALWAYS
-        | MenuItem.SHOW_AS_ACTION_COLLAPSE_ACTION_VIEW).setOnActionExpandListener(this).expandActionView()
-    menu.add(0, 2, 0, R.string.text_crop_thumbnails).setCheckable(true)
-        .setChecked(Preferences.cropThumbnails)
+    // noinspection ScalaDeprecation
+    def getDrawable(resId: Int): Drawable = sdk(21) {
+      case true => FetchActivity.this.getDrawable(resId)
+      case false => getResources.getDrawable(resId)
+    }.get
+
+    menu.add(0, OPTIONS_ITEM_SEARCH, 0, "").setActionView(searchView)
+      .setShowAsActionFlags(MenuItem.SHOW_AS_ACTION_ALWAYS | MenuItem.SHOW_AS_ACTION_COLLAPSE_ACTION_VIEW)
+      .setOnActionExpandListener(this).expandActionView()
+    menu.add(0, OPTIONS_ITEM_CROP, 0, R.string.text_crop_thumbnails).setIcon(getDrawable(sdk(21) {
+      case true => R.drawable.ic_crop_white
+      case false => R.drawable.ic_action_crop
+    }.get).mutate).setCheckable(true).setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS)
     if (keepSearchFocus) {
       keepSearchFocus = false
     } else {
@@ -125,12 +139,19 @@ class FetchActivity extends Activity with ViewTreeObserver.OnGlobalLayoutListene
     true
   }
 
+  override def onPrepareOptionsMenu(menu: Menu): Boolean = {
+    val cropMenuItem = menu.findItem(OPTIONS_ITEM_CROP)
+    cropMenuItem.setChecked(Preferences.cropThumbnails)
+    cropMenuItem.getIcon.setAlpha(if (Preferences.cropThumbnails) 0xff else 0x7f)
+    super.onPrepareOptionsMenu(menu)
+  }
+
   override def onOptionsItemSelected(item: MenuItem): Boolean = {
     item.getItemId match {
       case android.R.id.home =>
         finish()
         true
-      case 2 =>
+      case OPTIONS_ITEM_CROP =>
         Preferences.setCropThumbnails(!item.isChecked)
         gridAdapter.notifyDataSetChanged()
         invalidateOptionsMenu()
@@ -140,51 +161,23 @@ class FetchActivity extends Activity with ViewTreeObserver.OnGlobalLayoutListene
     }
   }
 
-  override def onCreateContextMenu(menu: ContextMenu, v: View, menuInfo: ContextMenuInfo): Unit = {
-    menu.add(0, 1, 0, R.string.text_download)
-  }
-
-  override def onContextItemSelected(item: MenuItem): Boolean = {
-    val info = item.getMenuInfo.asInstanceOf[AdapterView.AdapterContextMenuInfo]
-    item.getItemId match {
-      case 1 =>
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
-          checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
-            != PackageManager.PERMISSION_GRANTED) {
-          requestPermissions(Array(android.Manifest.permission.WRITE_EXTERNAL_STORAGE), info.position)
-        } else {
-          performDownload(gridAdapter.getItem(info.position))
+  override def onActivityResult(requestCode: Int, resultCode: Int, data: Intent): Unit = {
+    requestCode match {
+      case REQUEST_CODE_PREVIEW =>
+        if (resultCode == Activity.RESULT_OK) {
+          val image = data.getParcelableExtra[Image](PreviewActivity.EXTRA_IMAGE)
+          selectedImages += image
+          new LoadingDialog(null, selectedImages.map(_.imageUriString).head, this)
+            .show(getFragmentManager, LoadingDialog.TAG)
         }
-        true
       case _ =>
-        super.onContextItemSelected(item)
-    }
-  }
-
-  override def onRequestPermissionsResult(requestCode: Int, permissions: Array[String],
-    grantResults: Array[Int]): Unit = {
-    if (grantResults.length == 1 && grantResults(0) == PackageManager.PERMISSION_GRANTED) {
-      performDownload(gridAdapter.getItem(requestCode))
-    }
-  }
-
-  private def performDownload(image: Image): Unit = {
-    val downloadManager = getSystemService(Context.DOWNLOAD_SERVICE).asInstanceOf[DownloadManager]
-    val request = new DownloadManager.Request(Uri.parse(image.imageUriString))
-    request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-    request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS,
-        FileManager.obtainSimpleFileName(image.imageUriString))
-    request.allowScanningByMediaScanner()
-    try {
-      downloadManager.enqueue(request)
-    } catch {
-      case e: IllegalArgumentException if e.getMessage.equals("Unknown URL content://downloads/my_downloads") =>
-        Toast.makeText(this, R.string.error_download_manager, Toast.LENGTH_LONG).show()
+        super.onActivityResult(requestCode, resultCode, data)
     }
   }
 
   override def onQueryLoadingSuccess(images: List[Image]): Unit = {
     this.images.clear()
+    this.selectedImages.clear()
     this.images ++= images
     gridAdapter.setImages(images)
     gridView.post(() => gridView.setSelection(0))
@@ -205,12 +198,29 @@ class FetchActivity extends Activity with ViewTreeObserver.OnGlobalLayoutListene
   }
 
   override def onItemClick(parent: AdapterView[_], view: View, position: Int, id: Long): Unit = {
-    new LoadingDialog(null, gridAdapter.getItem(position).imageUriString, this)
-      .show(getFragmentManager, LoadingDialog.TAG)
+    val intent = new Intent(this, classOf[PreviewActivity])
+      .putExtra(PreviewActivity.EXTRA_IMAGE, gridAdapter.getItem(position).asInstanceOf[Parcelable])
+    sdk(21) {
+      case true =>
+        val view = parent.getChildAt(position - parent.getFirstVisiblePosition)
+        val (imageView, transition) = gridAdapter.extractImageViewForTransition(view)
+        intent.putExtra(PreviewActivity.EXTRA_TRANSITION, transition)
+        startActivityForResult(intent, REQUEST_CODE_PREVIEW,
+          ActivityOptions.makeSceneTransitionAnimation(this, imageView -> transition).toBundle)
+      case false =>
+        startActivityForResult(intent, REQUEST_CODE_PREVIEW)
+    }
   }
 }
 
 object FetchActivity {
   private val EXTRA_IMAGES = "images"
+  private val EXTRA_SELECTED_IMAGES = "selected_images"
+
+  private val REQUEST_CODE_PREVIEW = 1
+
+  private val OPTIONS_ITEM_SEARCH = 1
+  private val OPTIONS_ITEM_CROP = 2
+
   private val GRID_SPACING_DP = 4
 }

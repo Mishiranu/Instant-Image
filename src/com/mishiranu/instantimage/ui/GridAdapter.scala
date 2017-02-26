@@ -26,7 +26,8 @@ class GridAdapter extends BaseAdapter {
   override def getItemId(position: Int): Long = 0L
   override def getCount: Int = images.size
 
-  case class ViewHolder(imageView: SquareImageView, dimensionsView: TextView, titleView: TextView)
+  case class ViewHolder(imageView: SquareImageView, dimensionsView: TextView, titleView: TextView,
+    var transition: String)
 
   override def getView(position: Int, convertView: View, parent: ViewGroup): View = {
     val (view, viewHolder) = {
@@ -64,7 +65,7 @@ class GridAdapter extends BaseAdapter {
         titleView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12)
         linearLayout.addView(titleView, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
 
-        val viewHolder = ViewHolder(imageView, dimensionsView, titleView)
+        val viewHolder = ViewHolder(imageView, dimensionsView, titleView, null)
         frameLayout.setTag(viewHolder)
         (frameLayout, viewHolder)
       } else {
@@ -83,6 +84,12 @@ class GridAdapter extends BaseAdapter {
       viewHolder.dimensionsView.setVisibility(View.GONE)
     }
     viewHolder.titleView.setText(image.text)
+    viewHolder.transition = "image-" + position
     view
+  }
+
+  def extractImageViewForTransition(view: View): (ImageView, String) = {
+    val viewHolder = view.getTag.asInstanceOf[ViewHolder]
+    (viewHolder.imageView, viewHolder.transition)
   }
 }

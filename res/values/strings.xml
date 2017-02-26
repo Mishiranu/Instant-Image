@@ -4,6 +4,11 @@
 	<string name="text_crop_thumbnails">Crop thumbnails</string>
 	<string name="text_download">Download</string>
 	<string name="text_loading">Loading…</string>
+	<string name="text_preview">Preview</string>
+	<plurals name="text_select_image_format">
+		<item quantity="one">Select %d image</item>
+		<item quantity="other">Select %d images</item>
+	</plurals>
 
 	<string name="error_connection">Connection error</string>
 	<string name="error_download_manager">Download Manager is not available</string>
