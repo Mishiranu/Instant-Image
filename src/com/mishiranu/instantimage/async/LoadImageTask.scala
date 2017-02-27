@@ -24,7 +24,8 @@ class LoadImageTask(context: Context, uriString: String) extends Http {
   private def request: Observable[HttpResponse[Array[Byte]]] = {
     Observable[HttpResponse[Array[Byte]]] { e =>
       FileManager.cleanup(context)
-      e.onNext(http(uriString).asBytes)
+      // Add referer to avoid watermarks
+      e.onNext(http(uriString).header("Referer", uriString.replaceAll("(https?://.*?/).*", "$1")).asBytes)
       e.onCompleted()
     }
   }
