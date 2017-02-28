@@ -6,7 +6,7 @@ import com.mishiranu.instantimage.R
 import com.mishiranu.instantimage.model.Image
 import com.mishiranu.instantimage.util.ScalaHelpers._
 
-import org.json.{JSONException, JSONObject}
+import org.json.{JSONArray, JSONException, JSONObject}
 
 import rx.android.schedulers.AndroidSchedulers
 import rx.lang.scala.Observable
@@ -23,10 +23,10 @@ class LoadQueryTask(query: String) extends Http {
 
   private class InvalidResponseException extends Exception
 
-  private def request: Observable[HttpResponse[String]] = {
+  private def request(page: Int): Observable[HttpResponse[String]] = {
     Observable[HttpResponse[String]] { e =>
-      val uriString = Uri.parse("https://www.google.com/search?tbm=isch").buildUpon
-        .appendQueryParameter("q", query).build.toString
+      val uriString = Uri.parse("https://www.google.com/search?tbm=isch&asearch=ichunk").buildUpon
+        .appendQueryParameter("q", query).appendQueryParameter("start", (100 * page).toString).build.toString
       e.onNext(http(uriString).asString)
       e.onCompleted()
     }
@@ -40,6 +40,23 @@ class LoadQueryTask(query: String) extends Http {
   }
 
   private def getImages(response: String): Result = {
+    def getJsonArrayData[T](jsonArray: JSONArray, key: String, getter: JSONArray => Int => T): Option[T] = {
+      (0 until jsonArray.length)
+        .filter(_ % 2 == 0)
+        .filter(jsonArray.getString(_) == key)
+        .map(i => getter(jsonArray)(i + 1))
+        .headOption
+    }
+
+    val dom = try {
+      val jsonArray = new JSONArray(response)
+      getJsonArrayData(jsonArray, "rg_s", _.getJSONArray)
+        .flatMap(getJsonArrayData(_, "dom", _.getString))
+        .getOrElse(throw new InvalidResponseException)
+    } catch {
+      case _: JSONException => throw new InvalidResponseException
+    }
+
     def getImageString(data: String, from: Int): List[String] = {
       val start = data.indexOf('{', from + 1)
       val end = data.indexOf('}', start)
@@ -50,8 +67,8 @@ class LoadQueryTask(query: String) extends Http {
       }
     }
 
-    val index = response.indexOf("<body")
-    val list = if (index >= 0) getImageString(response, index) else List()
+    val index = dom.indexOf("<div")
+    val list = if (index >= 0) getImageString(dom, index) else List()
 
     Result(list.map { jsonString =>
       try {
@@ -77,8 +94,8 @@ class LoadQueryTask(query: String) extends Http {
     })
   }
 
-  def load: Observable[Result] = {
-    request.subscribeOn(Schedulers.io)
+  def load(page: Int): Observable[Result] = {
+    request(page).subscribeOn(Schedulers.io)
       .map(getString)
       .map(getImages)
       .onErrorReturn(handleError)
@@ -89,7 +106,7 @@ class LoadQueryTask(query: String) extends Http {
 object LoadQueryTask {
   case class Result(images: List[Image], errorMessageId: Int)
 
-  def apply(query: String): Observable[Result] = {
-    new LoadQueryTask(query).load
+  def apply(query: String, page: Int): Observable[Result] = {
+    new LoadQueryTask(query).load(page)
   }
 }
