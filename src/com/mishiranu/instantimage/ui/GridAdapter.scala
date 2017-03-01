@@ -6,8 +6,10 @@ import android.util.TypedValue
 import android.view.{Gravity, View, ViewGroup}
 import android.widget.{BaseAdapter, FrameLayout, ImageView, LinearLayout, TextView}
 
+import com.mishiranu.instantimage.graphics.{BorderSelectorDrawable, CheckSelectorDrawable, SelectorDrawable}
 import com.mishiranu.instantimage.model.Image
 import com.mishiranu.instantimage.util.Preferences
+import com.mishiranu.instantimage.util.ScalaHelpers._
 import com.mishiranu.instantimage.widget.SquareImageView
 import com.squareup.picasso.Picasso
 
@@ -15,11 +17,24 @@ import scala.collection.mutable
 
 class GridAdapter extends BaseAdapter {
   private val images = new mutable.ArrayBuffer[Image]
+  private val selectedImages = new mutable.LinkedHashSet[Image]
 
   def setImages(images: Seq[Image]): Unit = {
     this.images.clear()
     this.images ++= images
+    selectedImages.clear()
     notifyDataSetChanged()
+  }
+
+  def setSelected(view: View, image: Image, selected: Boolean): Unit = {
+    if (selected) {
+      selectedImages += image
+    } else {
+      selectedImages -= image
+    }
+    if (view != null) {
+      view.getTag.asInstanceOf[ViewHolder].selectorDrawable.setSelected(selected, true)
+    }
   }
 
   override def getItem(position: Int): Image = images(position)
@@ -27,7 +42,7 @@ class GridAdapter extends BaseAdapter {
   override def getCount: Int = images.size
 
   case class ViewHolder(imageView: SquareImageView, dimensionsView: TextView, titleView: TextView,
-    var transition: String)
+    var transition: String, selectorDrawable: SelectorDrawable)
 
   override def getView(position: Int, convertView: View, parent: ViewGroup): View = {
     val (view, viewHolder) = {
@@ -65,7 +80,15 @@ class GridAdapter extends BaseAdapter {
         titleView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12)
         linearLayout.addView(titleView, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
 
-        val viewHolder = ViewHolder(imageView, dimensionsView, titleView, null)
+        val selectorView = new View(parent.getContext)
+        val selectorDrawable = sdk(21) {
+          case true => new CheckSelectorDrawable
+          case false => new BorderSelectorDrawable(parent.getContext)
+        }.get
+        selectorView.setBackground(selectorDrawable)
+        frameLayout.addView(selectorView, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+
+        val viewHolder = ViewHolder(imageView, dimensionsView, titleView, null, selectorDrawable)
         frameLayout.setTag(viewHolder)
         (frameLayout, viewHolder)
       } else {
@@ -83,6 +106,7 @@ class GridAdapter extends BaseAdapter {
     } else {
       viewHolder.dimensionsView.setVisibility(View.GONE)
     }
+    viewHolder.selectorDrawable.setSelected(selectedImages.contains(image), false)
     viewHolder.titleView.setText(image.text)
     viewHolder.transition = "image-" + position
     view

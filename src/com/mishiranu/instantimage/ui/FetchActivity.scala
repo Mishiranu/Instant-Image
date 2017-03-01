@@ -1,7 +1,7 @@
 package com.mishiranu.instantimage.ui
 
 import android.app.{Activity, ActivityOptions}
-import android.content.Intent
+import android.content.{ClipData, Intent}
 import android.graphics.drawable.Drawable
 import android.os.{Bundle, Parcelable}
 import android.view.{Menu, MenuItem, View, ViewGroup, ViewTreeObserver}
@@ -15,7 +15,8 @@ import com.mishiranu.instantimage.util.ScalaHelpers._
 import scala.collection.mutable
 
 class FetchActivity extends Activity with ViewTreeObserver.OnGlobalLayoutListener with SearchView.OnQueryTextListener
-  with MenuItem.OnActionExpandListener with LoadingDialog.Callback with AdapterView.OnItemClickListener {
+  with MenuItem.OnActionExpandListener with LoadingDialog.Callback with AdapterView.OnItemClickListener
+  with AdapterView.OnItemLongClickListener {
   import FetchActivity._
 
   private val images = new mutable.ArrayBuffer[Image]
@@ -39,6 +40,9 @@ class FetchActivity extends Activity with ViewTreeObserver.OnGlobalLayoutListene
     gridView = new GridView(this)
     gridView.setId(android.R.id.list)
     gridView.setOnItemClickListener(this)
+    if (getIntent.getBooleanExtra(Intent.EXTRA_ALLOW_MULTIPLE, false)) {
+      gridView.setOnItemLongClickListener(this)
+    }
     gridView.setAdapter(gridAdapter)
     val density = getResources.getDisplayMetrics.density
     val spacing = (GRID_SPACING_DP * density + 0.5f).toInt
@@ -48,7 +52,6 @@ class FetchActivity extends Activity with ViewTreeObserver.OnGlobalLayoutListene
     gridView.setScrollBarStyle(View.SCROLLBARS_OUTSIDE_OVERLAY)
     gridView.setClipToPadding(false)
     gridView.getViewTreeObserver.addOnGlobalLayoutListener(this)
-    registerForContextMenu(gridView)
     addContentView(gridView, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
         ViewGroup.LayoutParams.MATCH_PARENT))
 
@@ -105,7 +108,7 @@ class FetchActivity extends Activity with ViewTreeObserver.OnGlobalLayoutListene
   override def onQueryTextSubmit(query: String): Boolean = {
     searchView.clearFocus()
     if (query.length() > 0) {
-      new LoadingDialog(query, null, this).show(getFragmentManager, LoadingDialog.TAG)
+      new LoadingDialog(query, this).show(getFragmentManager, LoadingDialog.TAG)
     }
     false
   }
@@ -166,9 +169,13 @@ class FetchActivity extends Activity with ViewTreeObserver.OnGlobalLayoutListene
       case REQUEST_CODE_PREVIEW =>
         if (resultCode == Activity.RESULT_OK) {
           val image = data.getParcelableExtra[Image](PreviewActivity.EXTRA_IMAGE)
+          if (!selectedImages.contains(image)) {
+            val position = images.indexOf(image)
+            val view = gridView.getChildAt(position - gridView.getFirstVisiblePosition)
+            toggleSelectedItem(image, view)
+          }
           selectedImages += image
-          new LoadingDialog(null, selectedImages.map(_.imageUriString).head, this)
-            .show(getFragmentManager, LoadingDialog.TAG)
+          new LoadingDialog(selectedImages.map(_.imageUriString), this).show(getFragmentManager, LoadingDialog.TAG)
         }
       case _ =>
         super.onActivityResult(requestCode, resultCode, data)
@@ -187,9 +194,33 @@ class FetchActivity extends Activity with ViewTreeObserver.OnGlobalLayoutListene
     Toast.makeText(this, getString(errorMessageId), Toast.LENGTH_SHORT).show()
   }
 
-  override def onImageLoadingSuccess(contentId: Int, mimeType: String): Unit = {
-    val uri = ImageProvider.buildUri(contentId)
-    setResult(Activity.RESULT_OK, new Intent().setDataAndType(uri, mimeType))
+  override def onImageLoadingSuccess(results: List[LoadingDialog.ImageLoadingSuccessResult]): Unit = {
+    val intent = new Intent
+    if (results.length >= 2) {
+      intent.setClipData {
+        val mimeTypes = if (getIntent.hasExtra(Intent.EXTRA_MIME_TYPES)) {
+          getIntent.getStringArrayExtra(Intent.EXTRA_MIME_TYPES)
+        } else {
+          Array(getIntent.getType)
+        }
+
+        import scala.language.implicitConversions
+        implicit def obtainClipDataItem(result: LoadingDialog.ImageLoadingSuccessResult): ClipData.Item = {
+          new ClipData.Item(ImageProvider.buildUri(result.contentId))
+        }
+
+        val clipData = new ClipData(null, mimeTypes, results.head)
+        for (i <- 1 until results.length) {
+          clipData.addItem(results(i))
+        }
+        clipData
+      }
+    } else {
+      val result = results.head
+      val uri = ImageProvider.buildUri(result.contentId)
+      intent.setDataAndType(uri, result.mimeType)
+    }
+    setResult(Activity.RESULT_OK, intent)
     finish()
   }
 
@@ -198,18 +229,42 @@ class FetchActivity extends Activity with ViewTreeObserver.OnGlobalLayoutListene
   }
 
   override def onItemClick(parent: AdapterView[_], view: View, position: Int, id: Long): Unit = {
-    val intent = new Intent(this, classOf[PreviewActivity])
-      .putExtra(PreviewActivity.EXTRA_IMAGE, gridAdapter.getItem(position).asInstanceOf[Parcelable])
-    sdk(21) {
-      case true =>
-        val view = parent.getChildAt(position - parent.getFirstVisiblePosition)
-        val (imageView, transition) = gridAdapter.extractImageViewForTransition(view)
-        intent.putExtra(PreviewActivity.EXTRA_TRANSITION, transition)
-        startActivityForResult(intent, REQUEST_CODE_PREVIEW,
-          ActivityOptions.makeSceneTransitionAnimation(this, imageView -> transition).toBundle)
-      case false =>
-        startActivityForResult(intent, REQUEST_CODE_PREVIEW)
+    val image = gridAdapter.getItem(position)
+    val view = parent.getChildAt(position - parent.getFirstVisiblePosition)
+    if (selectedImages.contains(image)) {
+      toggleSelectedItem(image, view)
+    } else {
+      val intent = new Intent(this, classOf[PreviewActivity])
+        .putExtra(PreviewActivity.EXTRA_IMAGE, image.asInstanceOf[Parcelable])
+        .putExtra(PreviewActivity.EXTRA_SELECTED_COUNT, selectedImages.size + 1)
+      sdk(21) {
+        case true =>
+          val (imageView, transition) = gridAdapter.extractImageViewForTransition(view)
+          intent.putExtra(PreviewActivity.EXTRA_TRANSITION, transition)
+          startActivityForResult(intent, REQUEST_CODE_PREVIEW,
+            ActivityOptions.makeSceneTransitionAnimation(this, imageView -> transition).toBundle)
+        case false =>
+          startActivityForResult(intent, REQUEST_CODE_PREVIEW)
+      }
     }
+  }
+
+  override def onItemLongClick(parent: AdapterView[_], view: View, position: Int, id: Long): Boolean = {
+    val image = gridAdapter.getItem(position)
+    val view = parent.getChildAt(position - parent.getFirstVisiblePosition)
+    toggleSelectedItem(image, view)
+    true
+  }
+
+  private def toggleSelectedItem(image: Image, view: View): Unit = {
+    val selected = if (selectedImages.contains(image)) {
+      selectedImages -= image
+      false
+    } else {
+      selectedImages += image
+      true
+    }
+    gridAdapter.setSelected(view, image, selected)
   }
 }
 

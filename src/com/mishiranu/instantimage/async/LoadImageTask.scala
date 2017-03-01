@@ -73,7 +73,7 @@ class LoadImageTask(context: Context, uriString: String) extends Http {
 object LoadImageTask {
   case class Result(contentId: Int, mimeType: String, errorMessageId: Int)
 
-  def apply(context: Context, uriString: String): Observable[Result] = {
-    new LoadImageTask(context.getApplicationContext, uriString).load
+  def apply(context: Context, uriStrings: Iterable[String]): Observable[List[Result]] = {
+    Observable.combineLatest(uriStrings.map(s => new LoadImageTask(context.getApplicationContext, s).load))(_.toList)
   }
 }
