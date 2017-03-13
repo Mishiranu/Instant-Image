@@ -14,7 +14,7 @@ import com.mishiranu.instantimage.R
 import com.mishiranu.instantimage.model.Image
 import com.mishiranu.instantimage.util.FileManager
 import com.mishiranu.instantimage.util.ScalaHelpers._
-import com.squareup.picasso.Picasso
+import com.squareup.picasso.{NetworkPolicy, Picasso}
 
 class PreviewActivity extends Activity {
   import PreviewActivity._
@@ -42,7 +42,10 @@ class PreviewActivity extends Activity {
 
     val imageView = new ImageView(this)
     rootLayout.addView(imageView, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1))
-    Picasso.`with`(this).load(image.thumbnailUriString).into(imageView)
+    Picasso.`with`(this)
+      .load(image.thumbnailUriString)
+      .networkPolicy(NetworkPolicy.NO_CACHE, NetworkPolicy.NO_STORE)
+      .into(imageView)
     sdk(21) { case true =>
       imageView.setTransitionName(transition)
     }

@@ -11,7 +11,7 @@ import com.mishiranu.instantimage.model.Image
 import com.mishiranu.instantimage.util.Preferences
 import com.mishiranu.instantimage.util.ScalaHelpers._
 import com.mishiranu.instantimage.widget.SquareImageView
-import com.squareup.picasso.Picasso
+import com.squareup.picasso.{NetworkPolicy, Picasso}
 
 import scala.collection.mutable
 
@@ -99,7 +99,10 @@ class GridAdapter extends BaseAdapter {
     val image = getItem(position)
     val scaleType = if (Preferences.cropThumbnails) ImageView.ScaleType.CENTER_CROP else ImageView.ScaleType.FIT_CENTER
     viewHolder.imageView.setScaleType(scaleType)
-    Picasso.`with`(parent.getContext).load(image.thumbnailUriString).into(viewHolder.imageView)
+    Picasso.`with`(parent.getContext)
+      .load(image.thumbnailUriString)
+      .networkPolicy(NetworkPolicy.NO_CACHE, NetworkPolicy.NO_STORE)
+      .into(viewHolder.imageView)
     if (image.width > 0 && image.height > 0) {
       viewHolder.dimensionsView.setVisibility(View.VISIBLE)
       viewHolder.dimensionsView.setText(image.width + " × " + image.height)
