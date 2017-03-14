@@ -6,35 +6,30 @@ import com.mishiranu.instantimage.R
 import com.mishiranu.instantimage.util.{FileManager, Preferences}
 import com.mishiranu.instantimage.util.ScalaHelpers._
 
+import com.squareup.okhttp.Response
+
 import rx.android.schedulers.AndroidSchedulers
 import rx.lang.scala.Observable
 import rx.schedulers.Schedulers
-
-import scalaj.http.HttpResponse
 
 import java.io.{FileOutputStream, IOException}
 
 import javax.net.ssl.SSLException
 
-class LoadImageTask(context: Context, uriString: String) extends Http {
+class LoadImageTask(context: Context, uriString: String) extends RxHttp {
   import LoadImageTask._
 
   private class InvalidResponseException extends Exception
 
-  private def request: Observable[HttpResponse[Array[Byte]]] = {
-    Observable[HttpResponse[Array[Byte]]] { e =>
-      FileManager.cleanup(context)
-      // Add referer to avoid watermarks
-      e.onNext(http(uriString).header("Referer", uriString.replaceAll("(https?://.*?/).*", "$1")).asBytes)
-      e.onCompleted()
-    }
+  private def request: Observable[Response] = {
+    request(uriString).header("Referer", uriString.replaceAll("(https?://.*?/).*", "$1")).execute()
   }
 
-  private def getImage(response: HttpResponse[Array[Byte]]): Array[Byte] = {
+  private def getImage(response: Response): Array[Byte] = {
     if (response.code != 200) {
       throw new InvalidResponseException
     }
-    response.body
+    response.body.bytes
   }
 
   private def writeToFile(response: Array[Byte]): Result = {

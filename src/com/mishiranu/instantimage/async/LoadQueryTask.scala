@@ -6,37 +6,34 @@ import com.mishiranu.instantimage.R
 import com.mishiranu.instantimage.model.Image
 import com.mishiranu.instantimage.util.ScalaHelpers._
 
+import com.squareup.okhttp.Response
+
 import org.json.{JSONArray, JSONException, JSONObject}
 
 import rx.android.schedulers.AndroidSchedulers
 import rx.lang.scala.Observable
 import rx.schedulers.Schedulers
 
-import scalaj.http.HttpResponse
-
 import java.io.IOException
 
 import javax.net.ssl.SSLException
 
-class LoadQueryTask(query: String) extends Http {
+class LoadQueryTask(query: String) extends RxHttp {
   import LoadQueryTask._
 
   private class InvalidResponseException extends Exception
 
-  private def request(page: Int): Observable[HttpResponse[String]] = {
-    Observable[HttpResponse[String]] { e =>
-      val uriString = Uri.parse("https://www.google.com/search?tbm=isch&asearch=ichunk").buildUpon
-        .appendQueryParameter("q", query).appendQueryParameter("start", (100 * page).toString).build.toString
-      e.onNext(http(uriString).asString)
-      e.onCompleted()
-    }
+  private def request(page: Int): Observable[Response] = {
+    val uriString = Uri.parse("https://www.google.com/search?tbm=isch&asearch=ichunk").buildUpon
+      .appendQueryParameter("q", query).appendQueryParameter("start", (100 * page).toString).build.toString
+    request(uriString).execute()
   }
 
-  private def getString(response: HttpResponse[String]): String = {
+  private def getString(response: Response): String = {
     if (response.code != 200) {
       throw new InvalidResponseException
     }
-    response.body
+    response.body.string
   }
 
   private def getImages(response: String): Result = {

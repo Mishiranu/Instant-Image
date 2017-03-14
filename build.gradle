@@ -86,7 +86,6 @@ dependencies {
 	compile 'org.scala-lang:scala-library:2.11.8'
 	compile 'io.reactivex:rxscala_2.10:0.26.5'
 	compile 'io.reactivex:rxandroid:1.2.1'
-	compile 'org.scalaj:scalaj-http_2.11:2.3.0'
 	compile 'com.squareup.okhttp:okhttp:2.7.5'
 	compile 'com.squareup.picasso:picasso:2.5.2'
 }
